@@ -1,3 +1,6 @@
-streamlit
-huggingface
-transformers
+streamlit==1.31.1
+transformers==4.35.2
+torch==2.1.2
+tokenizers==0.15.0
+sentencepiece==0.1.99
+anthropic==0.18.1
