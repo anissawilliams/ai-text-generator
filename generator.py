@@ -1,28 +1,13 @@
 import os
-from transformers import pipeline, set_seed
-import warnings
+import random
 
-warnings.filterwarnings('ignore')
-
-# Try to import anthropic, but don't fail if not available
+# Try to import anthropic
 try:
     import anthropic
 
     HAS_ANTHROPIC = True
 except ImportError:
     HAS_ANTHROPIC = False
-
-# Lazy load GPT-2 to save memory
-gpt2_generator = None
-
-
-def get_gpt2_generator():
-    """Lazy load GPT-2 generator"""
-    global gpt2_generator
-    if gpt2_generator is None:
-        set_seed(42)
-        gpt2_generator = pipeline('text-generation', model='gpt2')
-    return gpt2_generator
 
 
 def generate_with_api(prompt, sentiment, word_count):
@@ -67,56 +52,18 @@ Write the paragraph now:"""
         return None
 
 
-def generate_with_gpt2(prompt, sentiment, word_count):
-    """Generate using local GPT-2"""
-    generator = get_gpt2_generator()
+def generate_rule_based(prompt, sentiment, word_count):
+    """Enhanced rule-based generation when API is unavailable"""
 
-    # Sentiment-specific examples
-    examples = {
-        'positive': "Technology has transformed education, making learning accessible to millions worldwide and empowering students with unprecedented opportunities.",
-        'negative': "Technology has disrupted traditional learning, creating digital divides and reducing meaningful human interaction in classrooms.",
-        'neutral': "Technology has changed education through online platforms, digital resources, and remote learning capabilities."
-    }
-
-    # Build prompt
-    full_prompt = f"""Example of {sentiment} writing:
-{examples[sentiment]}
-
-Write a {sentiment} paragraph about: {prompt}
-
-Paragraph:"""
-
-    # Generate
-    result = generator(
-        full_prompt,
-        max_length=len(full_prompt.split()) + word_count + 20,
-        num_return_sequences=1,
-        temperature=0.7,
-        top_p=0.9,
-        repetition_penalty=1.5,
-        do_sample=True,
-        pad_token_id=50256
-    )
-
-    # Extract generated text (remove prompt)
-    generated = result[0]['generated_text']
-    generated = generated.split("Paragraph:")[-1].strip()
-
-    # Clean up if it's too short or has issues
-    if len(generated.split()) < 20:
-        generated = f"The topic of {prompt} is significant in today's world. " + generated
-
-    return generated
-
-
-def generate_text(prompt, sentiment, word_count=150):
-    """
-    Main generation function with fallback logic
-    """
-    # Try API first
-    text = generate_with_api(prompt, sentiment, word_count)
-    if text:
-        return text
-
-    # Fallback to GPT-2
-    return generate_with_gpt2(prompt, sentiment, word_count)
+    templates = {
+        'positive': {
+            'intro': [
+                f"The emergence of {prompt} represents a significant breakthrough in modern society.",
+                f"When examining {prompt}, we discover remarkable opportunities for positive transformation.",
+                f"The advancement of {prompt} has opened exciting new pathways for innovation and growth.",
+                f"{prompt} stands as a testament to human ingenuity and our capacity for progress.",
+            ],
+            'body': [
+                f"This development brings numerous benefits, including enhanced efficiency, improved accessibility, and greater inclusivity.",
+                f"Experts agree that the potential applications are vast, touching everything from education to healthcare to environmental sustainability.",
+                f"Communities worldwide are already experiencing the positive impacts, with measurable improvements in quality of
