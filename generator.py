@@ -13,11 +13,15 @@ except ImportError:
 def generate_with_api(prompt, sentiment, word_count):
     """Generate using Claude API"""
     if not HAS_ANTHROPIC:
+        print("Anthropic library not available")
         return None
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
+        print("No API key found in environment")
         return None
+
+    print(f"Attempting API call with key: {api_key[:10]}...")  # Debug
 
     try:
         client = anthropic.Anthropic(api_key=api_key)
@@ -45,97 +49,62 @@ Write the paragraph now:"""
             }]
         )
 
+        print("API call successful!")  # Debug
         return message.content[0].text
 
     except Exception as e:
-        print(f"API generation failed: {e}")
+        print(f"API generation failed with error: {type(e).__name__}: {str(e)}")
         return None
 
 
+def extract_topic_keywords(prompt):
+    """Extract key topic words from the prompt"""
+    stop_words = {'i', 'me', 'my', 'we', 'our', 'you', 'your', 'he', 'she', 'it', 'they',
+                  'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+                  'have', 'has', 'had', 'do', 'does', 'did',
+                  'a', 'an', 'the', 'and', 'or', 'but', 'if', 'because',
+                  'as', 'what', 'which', 'this', 'that', 'these', 'those',
+                  'love', 'hate', 'like', 'think', 'feel', 'believe',
+                  'how', 'why', 'when', 'where', 'who'}
+
+    words = prompt.lower().split()
+    keywords = [w.strip('.,!?;:') for w in words if w.strip('.,!?;:') not in stop_words]
+
+    return ' '.join(keywords[:5]) if keywords else prompt
+
+
 def generate_rule_based(prompt, sentiment, word_count):
-    """Enhanced rule-based generation when API is unavailable"""
+    """Improved rule-based generation that's more contextual"""
+
+    topic = extract_topic_keywords(prompt)
 
     templates = {
-        'positive': {
-            'intro': [
-                f"The emergence of {prompt} represents a significant breakthrough in modern society.",
-                f"When examining {prompt}, we discover remarkable opportunities for positive transformation.",
-                f"The advancement of {prompt} has opened exciting new pathways for innovation and growth.",
-                f"{prompt} stands as a testament to human ingenuity and our capacity for progress.",
-            ],
-            'body': [
-                f"This development brings numerous benefits, including enhanced efficiency, improved accessibility, and greater inclusivity.",
-                f"Experts agree that the potential applications are vast, touching everything from education to healthcare to environmental sustainability.",
-                f"Communities worldwide are already experiencing the positive impacts, with measurable improvements in quality of life and opportunity.",
-                f"The collaborative efforts driving this forward demonstrate the power of collective action and shared vision.",
-            ],
-            'conclusion': [
-                f"Looking ahead, {prompt} promises to continue reshaping our world in profoundly beneficial ways.",
-                f"With continued investment and thoughtful implementation, the future of {prompt} appears exceptionally bright.",
-                f"As we embrace these changes, the possibilities for positive impact seem limitless.",
-            ]
-        },
-        'negative': {
-            'intro': [
-                f"The rise of {prompt} has sparked serious concerns among experts and communities alike.",
-                f"When analyzing {prompt}, troubling patterns emerge that cannot be ignored.",
-                f"The proliferation of {prompt} presents significant challenges that threaten established systems.",
-                f"Critics warn that {prompt} may cause more harm than good if left unchecked.",
-            ],
-            'body': [
-                f"Key issues include widening inequality, erosion of traditional safeguards, and unintended negative consequences.",
-                f"Research indicates that vulnerable populations face disproportionate risks, exacerbating existing disparities.",
-                f"The rapid pace of change has outstripped our ability to implement adequate protections and oversight.",
-                f"Economic pressures and competing interests often prioritize short-term gains over long-term sustainability.",
-            ],
-            'conclusion': [
-                f"Without immediate action, the problems associated with {prompt} will only intensify.",
-                f"The costs of inaction far outweigh the challenges of implementing necessary reforms.",
-                f"Until these fundamental issues are addressed, {prompt} remains a source of justified concern.",
-            ]
-        },
-        'neutral': {
-            'intro': [
-                f"The topic of {prompt} has garnered significant attention from researchers and policymakers.",
-                f"Understanding {prompt} requires careful examination of multiple perspectives and available data.",
-                f"Recent studies on {prompt} have produced mixed findings that warrant further investigation.",
-                f"{prompt} represents a complex phenomenon with both supporters and critics.",
-            ],
-            'body': [
-                f"Evidence suggests that outcomes vary considerably depending on context, implementation, and demographic factors.",
-                f"Proponents highlight potential benefits while skeptics raise legitimate questions about risks and tradeoffs.",
-                f"The data shows both positive and negative trends across different regions and populations.",
-                f"Experts emphasize the need for balanced approaches that consider diverse stakeholder interests.",
-            ],
-            'conclusion': [
-                f"Further research is needed to fully understand the implications of {prompt}.",
-                f"Policymakers face difficult choices as they navigate competing priorities and limited resources.",
-                f"The debate surrounding {prompt} continues to evolve as new information emerges.",
-            ]
-        }
+        'positive': [
+            f"The subject of {topic} brings remarkable opportunities and positive developments to our society. This area has shown tremendous growth and innovation, with communities experiencing tangible benefits and improved outcomes. Experts highlight the transformative potential, noting how {topic} creates pathways for progress and empowerment. The enthusiasm surrounding this topic is well-founded, as evidence demonstrates meaningful positive impacts across diverse populations. Looking forward, the continued advancement of {topic} promises even greater benefits, fostering hope and optimism for the future.",
+        ],
+        'negative': [
+            f"The issue of {topic} raises serious concerns that demand immediate attention and critical examination. Evidence suggests troubling patterns emerging, with negative consequences affecting vulnerable populations disproportionately. Experts warn about the risks associated with {topic}, pointing to systemic problems and inadequate safeguards. The current trajectory appears unsustainable, threatening to exacerbate existing inequalities and create new challenges. Without significant intervention and reform, the problems surrounding {topic} will likely intensify, causing further harm and destabilization.",
+        ],
+        'neutral': [
+            f"The topic of {topic} presents a complex landscape that merits careful, balanced examination from multiple perspectives. Research in this area reveals mixed findings, with outcomes varying significantly based on context, implementation approaches, and demographic factors. Stakeholders hold divergent views about {topic}, with valid arguments on different sides of key debates. Data shows both positive and negative trends across various metrics, suggesting that simplistic conclusions would be premature. Continued study and evidence-gathering remain essential for developing nuanced understanding of {topic}.",
+        ]
     }
 
-    # Select appropriate templates
-    sentiment_templates = templates.get(sentiment, templates['neutral'])
-
-    # Build paragraph
-    intro = random.choice(sentiment_templates['intro'])
-    body = random.choice(sentiment_templates['body'])
-    conclusion = random.choice(sentiment_templates['conclusion'])
-
-    paragraph = f"{intro} {body} {conclusion}"
-
-    return paragraph
+    options = templates.get(sentiment, templates['neutral'])
+    return random.choice(options)
 
 
 def generate_text(prompt, sentiment, word_count=150):
     """
-    Main generation function - tries API first, then rule-based fallback
+    Main generation function - tries API first, then improved rule-based fallback
     """
+    print(f"generate_text called with: prompt='{prompt}', sentiment='{sentiment}'")  # Debug
+
     # Try API first
     text = generate_with_api(prompt, sentiment, word_count)
     if text:
         return text
 
-    # Fallback to rule-based generation
+    print("Falling back to rule-based generation")  # Debug
+    # Fallback to improved rule-based generation
     return generate_rule_based(prompt, sentiment, word_count)
