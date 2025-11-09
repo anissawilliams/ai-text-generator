@@ -1,4 +1,2 @@
 streamlit
-transformers<4.36
 anthropic
-torch<2.2
