@@ -12,7 +12,7 @@ with st.sidebar:
     st.header("⚙️ Settings")
     word_count = st.slider("Target Word Count", 50, 500, 150, 25)
     manual_override = st.selectbox(
-        "Manual Sentiment Override (Optional)",
+        "Manual Sentiment Override",
         ["Auto-detect", "Positive", "Negative", "Neutral"]
     )
     st.markdown("---")
@@ -32,10 +32,10 @@ if st.button("🚀 Analyze & Generate", type="primary", use_container_width=True
     if not user_prompt.strip():
         st.error("Please enter a prompt!")
     else:
+        # Detect sentiment
         with st.spinner("🧠 Analyzing sentiment..."):
-            # Detect sentiment
             if manual_override == "Auto-detect":
-                detected_sentiment = sentiment.analyze_sentiment(user_prompt)
+                detected_sentiment = sentiment.detect_sentiment(user_prompt)
             else:
                 detected_sentiment = manual_override.lower()
 
@@ -48,13 +48,9 @@ if st.button("🚀 Analyze & Generate", type="primary", use_container_width=True
             st.success(
                 f"{sentiment_colors.get(detected_sentiment, '⚪')} Detected Sentiment: **{detected_sentiment.upper()}**")
 
+        # Generate text
         with st.spinner("✨ Generating text..."):
-            # Generate text
-            generated_text = generator.generate_text(
-                user_prompt,
-                detected_sentiment,
-                word_count
-            )
+            generated_text = generator.generate_text(user_prompt, detected_sentiment, word_count)
 
             # Display result
             st.markdown("### 📄 Generated Text")

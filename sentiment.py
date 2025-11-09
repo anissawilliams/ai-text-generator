@@ -1,37 +1,44 @@
-
 from transformers import pipeline
 import warnings
+
 warnings.filterwarnings('ignore')
 
-# Initialize sentiment analyzer (using a better model)
-sentiment_pipeline = pipeline(
-    "sentiment-analysis",
-    model="cardiffnlp/twitter-roberta-base-sentiment-latest",
-    top_k=None
-)
+# Use a simpler, more reliable model
+sentiment_pipeline = None
 
-def analyze_sentiment(text):
+
+def get_pipeline():
+    """Lazy load the pipeline to avoid initialization errors"""
+    global sentiment_pipeline
+    if sentiment_pipeline is None:
+        sentiment_pipeline = pipeline(
+            "sentiment-analysis",
+            model="distilbert/distilbert-base-uncased-finetuned-sst-2-english"
+        )
+    return sentiment_pipeline
+
+
+def detect_sentiment(text):
     """
     Analyzes the sentiment of input text.
     Returns: 'positive', 'negative', or 'neutral'
     """
     try:
-        results = sentiment_pipeline(text)[0]
+        pipe = get_pipeline()
+        result = pipe(text[:512])[0]  # Limit to 512 tokens
 
-        # The model returns labels like 'positive', 'negative', 'neutral'
-        # Find the label with highest score
-        top_result = max(results, key=lambda x: x['score'])
-        label = top_result['label'].lower()
+        label = result['label'].lower()
+        score = result['score']
 
-        # Map labels to our three categories
-        if 'pos' in label:
-            return 'positive'
-        elif 'neg' in label:
-            return 'negative'
-        else:
+        # DistilBERT returns POSITIVE or NEGATIVE
+        # Consider it neutral if confidence is low
+        if score < 0.65:
             return 'neutral'
+        elif 'positive' in label:
+            return 'positive'
+        else:
+            return 'negative'
+
     except Exception as e:
-        print(f"Error in sentiment analysis: {e}")
-        return 'neutral'  # Default fallback
-
-
+        st.error(f"Sentiment analysis error: {e}")
+        return 'neutral'

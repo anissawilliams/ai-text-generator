@@ -1,107 +1,122 @@
-import anthropic
 import os
+from transformers import pipeline, set_seed
+import warnings
+
+warnings.filterwarnings('ignore')
+
+# Try to import anthropic, but don't fail if not available
+try:
+    import anthropic
+
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
+
+# Lazy load GPT-2 to save memory
+gpt2_generator = None
 
 
-# Alternative: Using local models if you don't want API
-def generate_text_with_api(prompt, sentiment, word_count=150):
-    """
-    Generate text using Claude API (requires ANTHROPIC_API_KEY env variable)
-    """
-    client = anthropic.Anthropic(
-        api_key=os.environ.get("ANTHROPIC_API_KEY")
-    )
+def get_gpt2_generator():
+    """Lazy load GPT-2 generator"""
+    global gpt2_generator
+    if gpt2_generator is None:
+        set_seed(42)
+        gpt2_generator = pipeline('text-generation', model='gpt2')
+    return gpt2_generator
 
-    sentiment_guides = {
-        'positive': 'optimistic, hopeful, and enthusiastic tone. Highlight benefits, opportunities, and positive aspects.',
-        'negative': 'critical, pessimistic, or concerning tone. Focus on problems, challenges, and drawbacks.',
-        'neutral': 'balanced, objective, and factual tone. Present information without emotional bias.'
-    }
 
-    system_prompt = f"""Write a {sentiment} paragraph about the given topic.
+def generate_with_api(prompt, sentiment, word_count):
+    """Generate using Claude API"""
+    if not HAS_ANTHROPIC:
+        return None
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+
+        sentiment_guides = {
+            'positive': 'optimistic, hopeful, and enthusiastic tone. Highlight benefits, opportunities, and positive aspects.',
+            'negative': 'critical, pessimistic, or concerning tone. Focus on problems, challenges, and drawbacks.',
+            'neutral': 'balanced, objective, and factual tone. Present information without emotional bias.'
+        }
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            messages=[{
+                "role": "user",
+                "content": f"""Write a {sentiment} paragraph about: "{prompt}"
 
 Requirements:
 - Use a {sentiment_guides[sentiment]}
 - Write approximately {word_count} words
 - Make it coherent, well-structured, and natural
-- Match the {sentiment} sentiment consistently throughout"""
+- Match the {sentiment} sentiment consistently throughout
 
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1000,
-        messages=[
-            {"role": "user", "content": f"Topic: {prompt}\n\nWrite the paragraph now:"}
-        ],
-        system=system_prompt
-    )
+Write the paragraph now:"""
+            }]
+        )
 
-    return message.content[0].text
+        return message.content[0].text
+
+    except Exception as e:
+        print(f"API generation failed: {e}")
+        return None
 
 
-def generate_text_with_gpt2(prompt, sentiment, word_count=150):
-    """
-    Generate text using local GPT-2 model (no API needed)
-    Much better prompting strategy than your original
-    """
-    from transformers import pipeline, set_seed
-    set_seed(42)
+def generate_with_gpt2(prompt, sentiment, word_count):
+    """Generate using local GPT-2"""
+    generator = get_gpt2_generator()
 
-    generator = pipeline('text-generation', model='gpt2-medium')  # Using medium for better quality
-
-    # Few-shot examples for each sentiment
+    # Sentiment-specific examples
     examples = {
-        'positive': [
-            "Renewable energy has revolutionized our approach to sustainability, offering clean alternatives that reduce carbon emissions and create green jobs.",
-            "The community's collaborative spirit has fostered innovation, bringing people together to solve problems and celebrate achievements."
-        ],
-        'negative': [
-            "Rising inequality continues to widen the gap between rich and poor, creating systemic barriers that limit opportunities for millions.",
-            "Environmental degradation accelerates unchecked, threatening ecosystems and future generations with irreversible damage."
-        ],
-        'neutral': [
-            "The policy was implemented in 2023, affecting approximately 2 million individuals across various demographics and regions.",
-            "Research indicates that the phenomenon occurs under specific conditions, with measurable effects documented in controlled studies."
-        ]
+        'positive': "Technology has transformed education, making learning accessible to millions worldwide and empowering students with unprecedented opportunities.",
+        'negative': "Technology has disrupted traditional learning, creating digital divides and reducing meaningful human interaction in classrooms.",
+        'neutral': "Technology has changed education through online platforms, digital resources, and remote learning capabilities."
     }
 
-    # Build enhanced prompt
-    example_text = "\n".join(examples[sentiment])
-    full_prompt = f"""Below are examples of {sentiment} writing:
+    # Build prompt
+    full_prompt = f"""Example of {sentiment} writing:
+{examples[sentiment]}
 
-{example_text}
+Write a {sentiment} paragraph about: {prompt}
 
-Now write a {sentiment} paragraph about: {prompt}
+Paragraph:"""
 
-"""
-
-    # Generate with better parameters
+    # Generate
     result = generator(
         full_prompt,
-        max_length=len(full_prompt.split()) + word_count,
+        max_length=len(full_prompt.split()) + word_count + 20,
         num_return_sequences=1,
-        temperature=0.8,
-        top_p=0.92,
-        repetition_penalty=1.3,
+        temperature=0.7,
+        top_p=0.9,
+        repetition_penalty=1.5,
         do_sample=True,
         pad_token_id=50256
     )
 
-    # Extract only the generated part (remove prompt)
+    # Extract generated text (remove prompt)
     generated = result[0]['generated_text']
-    generated = generated[len(full_prompt):].strip()
+    generated = generated.split("Paragraph:")[-1].strip()
+
+    # Clean up if it's too short or has issues
+    if len(generated.split()) < 20:
+        generated = f"The topic of {prompt} is significant in today's world. " + generated
 
     return generated
 
 
-# Main function that you'll call
 def generate_text(prompt, sentiment, word_count=150):
     """
-    Main generation function. 
-    Uses API if available, falls back to GPT-2
+    Main generation function with fallback logic
     """
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        try:
-            return generate_text_with_api(prompt, sentiment, word_count)
-        except:
-            print("API failed, falling back to local model...")
+    # Try API first
+    text = generate_with_api(prompt, sentiment, word_count)
+    if text:
+        return text
 
-    return generate_text_with_gpt2(prompt, sentiment, word_count)
+    # Fallback to GPT-2
+    return generate_with_gpt2(prompt, sentiment, word_count)
