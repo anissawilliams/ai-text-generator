@@ -34,21 +34,4 @@ def analyze_sentiment(text):
         print(f"Error in sentiment analysis: {e}")
         return 'neutral'  # Default fallback
 
-# Alternative: If you want to use the original DistilBERT model
-def analyze_sentiment_simple(text):
-    """Simpler sentiment analyzer using DistilBERT"""
-    from transformers import pipeline
 
-    analyzer = pipeline(
-        "sentiment-analysis",
-        model="distilbert/distilbert-base-uncased-finetuned-sst-2-english"
-    )
-
-    result = analyzer(text)[0]
-    label = result['label'].lower()
-
-    # This model only returns POSITIVE or NEGATIVE
-    # We'll consider neutral if score is close to 0.5
-    if result['score'] < 0.6:
-        return 'neutral'
-    return label
