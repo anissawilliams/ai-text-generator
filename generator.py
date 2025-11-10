@@ -1,33 +1,21 @@
 import os
 import streamlit as st
-import requests
+from huggingface_hub import InferenceClient
 
-# ----------------------------------------
-# Hugging Face API setup
-# ----------------------------------------
-HF_API_TOKEN = st.secrets.get("HF_API_TOKEN") or os.environ.get("HF_API_TOKEN")
-#HF_MODEL = "google/flan-t5-small"  # Instruction-tuned model
+# Setup HF API
+HF_TOKEN = st.secrets.get("HF_API_TOKEN") or os.environ.get("HF_API_TOKEN")
+if not HF_TOKEN:
+    st.warning("⚠️ No Hugging Face API token found; will use rule‑based fallback.")
+HAS_HF = bool(HF_TOKEN)
 
-HAS_HF = True if HF_API_TOKEN else False
-if not HAS_HF:
-    st.warning("⚠️ No Hugging Face API key found. Using rule-based fallback.")
+# Select model (update this when you’ve confirmed which works)
+HF_MODEL = "tiiuae/falcon-7b-instruct"
 
+if HAS_HF:
+    hf_client = InferenceClient(api_key=HF_TOKEN)
 
-# ----------------------------------------
-# Rule-based examples for fallback
-# ----------------------------------------
-FEW_SHOT_EXAMPLES = """## Examples
-Positive: Ice cream is a delightful treat enjoyed by people of all ages.
-Negative: Fast food has been criticized for its health impacts.
-Neutral: Pasta is a staple food commonly served with sauces or vegetables.
-"""
-
-
-# ----------------------------------------
-# Helper functions
-# ----------------------------------------
 def extract_topic_keywords(prompt: str) -> str:
-    """Extract key topic words from the prompt."""
+    # (same as your version)
     stop_words = {
         'i','me','my','we','our','you','your','he','she','it','they',
         'am','is','are','was','were','be','been','being',
@@ -41,66 +29,38 @@ def extract_topic_keywords(prompt: str) -> str:
     keywords = [w.strip('.,!?;:') for w in words if w.strip('.,!?;:') not in stop_words]
     return ' '.join(keywords[:5]) if keywords else prompt
 
-
 def classify_topic_type(prompt: str) -> str:
-    """Classify topic for rule-based fallback."""
-    prompt = prompt.lower()
-    if any(word in prompt for word in ["pizza","ice cream","burger","food","meal","snack","dish"]):
+    prompt_lower = prompt.lower()
+    if any(word in prompt_lower for word in ["pizza","ice cream","burger","food","meal","snack","dish"]):
         return "food"
-    elif any(word in prompt for word in ["beach","soccer","game","watching","playing","travel","vacation","hobby"]):
+    elif any(word in prompt_lower for word in ["beach","soccer","game","playing","travel","vacation","hobby"]):
         return "activity"
-    elif any(word in prompt for word in ["dog","cat","pet","animal","bird","fish"]):
+    elif any(word in prompt_lower for word in ["dog","cat","pet","animal","bird","fish"]):
         return "animal"
     else:
         return "generic"
 
-
-# ----------------------------------------
-# Hugging Face generation
-# ----------------------------------------
 def generate_with_hf(prompt: str, sentiment: str, word_count: int = 150) -> str | None:
-    """Generate text using Hugging Face Inference API."""
     if not HAS_HF:
         return None
 
     topic = extract_topic_keywords(prompt).capitalize()
-    hf_prompt = f"Write a {sentiment} paragraph about {topic} in a friendly, casual tone. Around {word_count} words."
+    hf_prompt = (f"Write a {sentiment} paragraph about {topic} "
+                 f"in a friendly, casual tone, around {word_count} words.")
 
     try:
-        # url = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
-        # response = requests.post(
-        #     url,
-        #     headers={"Authorization": f"Bearer {HF_API_TOKEN}"},
-        #     json={"inputs": hf_prompt},
-        #     timeout=30
-        # )
-
-        model_name = "tiiuae/falcon-7b-instruct"
-        endpoint = "https://router.huggingface.co/v1/completions"
-
-        payload = {
-            "model": model_name,
-            "inputs": f"Write a positive paragraph about {topic} in a friendly tone."
-        }
-
-        headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-        resp = requests.post(endpoint, json=payload, headers=headers, timeout=30)
-        st.write("Status:", resp.status_code)
-        st.write("Body:", resp.text)
-
-        resp.raise_for_status()
-        data = resp.json()
-        # Hugging Face outputs text under 'generated_text'
-        text = data[0]["generated_text"].strip()
-        return text
+        resp = hf_client.text_generation(
+            model=HF_MODEL,
+            inputs=hf_prompt,
+            parameters={"max_new_tokens": word_count, "temperature": 0.8}
+        )
+        # The client returns a dict or list depending on model; adjust accordingly
+        text = resp[0]["generated_text"] if isinstance(resp, list) else resp["generated_text"]
+        return text.strip()
     except Exception as e:
         st.error(f"❌ HF generation failed: {type(e).__name__}: {e}")
         return None
 
-
-# ----------------------------------------
-# Rule-based fallback
-# ----------------------------------------
 def generate_rule_based(prompt: str, sentiment: str, word_count: int = 150) -> str:
     topic = extract_topic_keywords(prompt).capitalize()
     topic_type = classify_topic_type(prompt)
@@ -126,17 +86,12 @@ def generate_rule_based(prompt: str, sentiment: str, word_count: int = 150) -> s
             "neutral": f"{topic} is a subject of ongoing discussion."
         }
     }
-    return templates[topic_type][sentiment]
+    return templates[topic_type].get(sentiment, templates["generic"]["neutral"])
 
-
-# ----------------------------------------
-# Main generation function
-# ----------------------------------------
 def generate_text(prompt: str, sentiment: str, word_count: int = 150) -> str:
-    """Generate text using HF API first, then fallback."""
     st.info(f"Generating text for topic='{prompt}' with sentiment='{sentiment}'...")
     text = generate_with_hf(prompt, sentiment, word_count)
     if text:
         return text
-    st.warning("Falling back to rule-based generation.")
+    st.warning("Falling back to rule‑based generation.")
     return generate_rule_based(prompt, sentiment, word_count)
