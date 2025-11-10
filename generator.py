@@ -26,16 +26,31 @@ def extract_topic_keywords(prompt):
     return ' '.join(keywords[:5]) if keywords else prompt
 
 
+def is_casual_topic(prompt):
+    """Detect if the topic is casual/personal"""
+    casual_keywords = ["food", "movie", "music", "holiday", "game", "hobby", "favorite", "love", "like", "enjoy"]
+    return any(word in prompt.lower() for word in casual_keywords)
+
+
 def rewrite_prompt_for_claude(user_input, sentiment):
     """Reframe casual input into a natural, sentiment-aligned topic"""
     topic = extract_topic_keywords(user_input).capitalize()
+    casual = is_casual_topic(user_input)
 
-    if sentiment == "positive":
-        return f"{topic} is widely loved and appreciated. Here's a joyful reflection:"
-    elif sentiment == "negative":
-        return f"{topic} has sparked concern or criticism. Here's a critical perspective:"
+    if casual:
+        if sentiment == "positive":
+            return f"{topic} is loved by many for its fun, flavor, and comfort. Here's a joyful reflection:"
+        elif sentiment == "negative":
+            return f"Some people have concerns about {topic}, especially regarding health or overuse. Here's a critical take:"
+        else:
+            return f"{topic} is a popular topic with many perspectives. Here's a neutral overview:"
     else:
-        return f"{topic} is a topic of interest. Here's an objective summary:"
+        if sentiment == "positive":
+            return f"{topic} is widely appreciated for its benefits and impact. Here's a positive summary:"
+        elif sentiment == "negative":
+            return f"{topic} has sparked criticism and concern. Here's a critical perspective:"
+        else:
+            return f"{topic} is a subject of interest. Here's an objective summary:"
 
 
 def generate_with_api(prompt, sentiment, word_count):
@@ -75,18 +90,32 @@ def generate_with_api(prompt, sentiment, word_count):
 def generate_rule_based(prompt, sentiment, word_count):
     """Improved rule-based generation that's more contextual"""
     topic = extract_topic_keywords(prompt)
+    casual = is_casual_topic(prompt)
 
-    templates = {
-        'positive': [
-            f"{topic.capitalize()} is beloved by many for its positive impact and widespread appeal. It brings people together and continues to inspire enthusiasm across communities."
-        ],
-        'negative': [
-            f"{topic.capitalize()} has raised concerns due to its potential drawbacks and ongoing challenges. Critics argue that it requires closer scrutiny and reform."
-        ],
-        'neutral': [
-            f"{topic.capitalize()} is a subject of ongoing discussion. It presents a range of perspectives and outcomes depending on context and interpretation."
-        ]
-    }
+    if casual:
+        templates = {
+            'positive': [
+                f"{topic.capitalize()} is absolutely delicious and loved by people of all ages. Whether it's shared at parties or enjoyed solo, it always hits the spot."
+            ],
+            'negative': [
+                f"While many enjoy {topic}, some find it unhealthy or overly processed. It's important to enjoy it in moderation."
+            ],
+            'neutral': [
+                f"{topic.capitalize()} is a popular item made with various ingredients and enjoyed in many cultures."
+            ]
+        }
+    else:
+        templates = {
+            'positive': [
+                f"{topic.capitalize()} is widely appreciated for its positive impact and broad appeal. It continues to inspire enthusiasm and innovation."
+            ],
+            'negative': [
+                f"{topic.capitalize()} has raised concerns due to its drawbacks and ongoing challenges. Critics argue that it requires closer scrutiny and reform."
+            ],
+            'neutral': [
+                f"{topic.capitalize()} is a subject of ongoing discussion. It presents a range of perspectives depending on context and interpretation."
+            ]
+        }
 
     options = templates.get(sentiment, templates['neutral'])
     return random.choice(options)
