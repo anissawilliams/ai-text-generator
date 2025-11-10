@@ -1,6 +1,9 @@
+
 import streamlit as st
 import sentiment
 import generator
+
+st.write("🔑 Key prefix:", st.secrets.get("ANTHROPIC_API_KEY", "Not found")[:12])
 
 st.title("AI Sentiment-Based Text Generator")
 
