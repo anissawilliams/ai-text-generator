@@ -6,7 +6,7 @@ import requests
 # Hugging Face API setup
 # ----------------------------------------
 HF_API_TOKEN = st.secrets.get("HF_API_TOKEN") or os.environ.get("HF_API_TOKEN")
-HF_MODEL = "mosaicml/mpt-7b-instruct"  # Instruction-tuned model
+HF_MODEL = "google/flan-t5-small"  # Instruction-tuned model
 
 HAS_HF = True if HF_API_TOKEN else False
 if not HAS_HF:
