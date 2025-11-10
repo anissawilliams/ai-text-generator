@@ -8,6 +8,20 @@ try:
 except ImportError:
     HAS_ANTHROPIC = False
 
+# Few-shot examples to guide Claude's tone and structure
+FEW_SHOT_EXAMPLES = """Examples:
+Positive: Ice cream is a delightful treat enjoyed by people of all ages, especially during warm weather.
+Negative: Fast food has been criticized for its health impacts and contribution to poor dietary habits.
+Neutral: Pasta is a staple food made from wheat and water, commonly served with sauces or vegetables.
+
+Positive: Playing video games can be a fun and relaxing way to unwind after a long day.
+Negative: Spending too much time on social media can lead to stress, distraction, and reduced productivity.
+Neutral: Board games are tabletop games that involve counters or pieces moved on a pre-marked surface.
+
+Positive: Dogs are loyal companions that bring joy, comfort, and energy to their owners.
+Negative: Owning a pet can be challenging due to time commitments, expenses, and behavioral issues.
+Neutral: Cats are domesticated animals known for their independence and quiet nature.
+"""
 
 def extract_topic_keywords(prompt):
     """Extract key topic words from the prompt"""
@@ -25,40 +39,19 @@ def extract_topic_keywords(prompt):
     keywords = [w.strip('.,!?;:') for w in words if w.strip('.,!?;:') not in stop_words]
     return ' '.join(keywords[:5]) if keywords else prompt
 
-
 def is_casual_topic(prompt):
     """Detect if the topic is casual/personal"""
-    casual_keywords = ["food", "movie", "music", "holiday", "game", "hobby", "favorite", "love", "like", "enjoy"]
+    casual_keywords = ["food", "movie", "music", "holiday", "game", "hobby", "favorite", "love", "like", "enjoy", "watching", "playing"]
     return any(word in prompt.lower() for word in casual_keywords)
 
-FEW_SHOT_EXAMPLES = """Examples:
-Positive: Ice cream is a delightful treat enjoyed by people of all ages, especially during warm weather.
-Negative: Fast food has been criticized for its health impacts and contribution to poor dietary habits.
-Neutral: Pasta is a staple food made from wheat and water, commonly served with sauces or vegetables.
-
-Positive: Playing video games can be a fun and relaxing way to unwind after a long day.
-Negative: Spending too much time on social media can lead to stress, distraction, and reduced productivity.
-Neutral: Board games are tabletop games that involve counters or pieces moved on a pre-marked surface.
-
-Positive: Dogs are loyal companions that bring joy, comfort, and energy to their owners.
-Negative: Owning a pet can be challenging due to time commitments, expenses, and behavioral issues.
-Neutral: Cats are domesticated animals known for their independence and quiet nature.
-"""
-
 def rewrite_prompt_for_claude(user_input, sentiment):
+    """Reframe input with few-shot examples and tone guidance"""
     topic = extract_topic_keywords(user_input).capitalize()
-    casual = is_casual_topic(user_input)
+    tone = "friendly and natural tone for a casual audience"
 
-    intro = FEW_SHOT_EXAMPLES.strip()
+    return f"""{FEW_SHOT_EXAMPLES}
 
-    if casual:
-        return f"""{intro}
-
-Now write a {sentiment} paragraph about {topic}:"""
-    else:
-        return f"""{intro}
-
-Now write a {sentiment} paragraph about {topic}, using a clear and natural tone:"""
+Now write a {sentiment} paragraph about {topic}, using a {tone}:"""
 
 def generate_with_api(prompt, sentiment, word_count):
     """Generate using Claude API"""
@@ -93,28 +86,27 @@ def generate_with_api(prompt, sentiment, word_count):
         print(f"API generation failed with error: {type(e).__name__}: {str(e)}")
         return None
 
-
 def generate_rule_based(prompt, sentiment, word_count):
-    """Improved rule-based generation that's more contextual"""
+    """Rule-based fallback with casual tone support"""
     topic = extract_topic_keywords(prompt)
     casual = is_casual_topic(prompt)
 
     if casual:
         templates = {
             'positive': [
-                f"{topic.capitalize()} is absolutely delicious and loved by people of all ages. Whether it's shared at parties or enjoyed solo, it always hits the spot."
+                f"{topic.capitalize()} is a fun and enjoyable part of everyday life. It brings people together and always adds a little joy."
             ],
             'negative': [
-                f"While many enjoy {topic}, some find it unhealthy or overly processed. It's important to enjoy it in moderation."
+                f"While many enjoy {topic}, some find it overwhelming or distracting. It's best enjoyed in moderation."
             ],
             'neutral': [
-                f"{topic.capitalize()} is a popular item made with various ingredients and enjoyed in many cultures."
+                f"{topic.capitalize()} is a common activity that people engage in for entertainment or relaxation."
             ]
         }
     else:
         templates = {
             'positive': [
-                f"{topic.capitalize()} is widely appreciated for its positive impact and broad appeal. It continues to inspire enthusiasm and innovation."
+                f"{topic.capitalize()} is widely appreciated for its benefits and positive impact. It continues to inspire enthusiasm and innovation."
             ],
             'negative': [
                 f"{topic.capitalize()} has raised concerns due to its drawbacks and ongoing challenges. Critics argue that it requires closer scrutiny and reform."
@@ -127,14 +119,10 @@ def generate_rule_based(prompt, sentiment, word_count):
     options = templates.get(sentiment, templates['neutral'])
     return random.choice(options)
 
-
 def generate_text(prompt, sentiment, word_count=150):
-    """
-    Main generation function - tries API first, then improved rule-based fallback
-    """
+    """Main generation function - tries API first, then rule-based fallback"""
     print(f"generate_text called with: prompt='{prompt}', sentiment='{sentiment}'")  # Debug
 
-    # Try API first
     text = generate_with_api(prompt, sentiment, word_count)
     if text:
         return text
