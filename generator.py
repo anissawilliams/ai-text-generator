@@ -11,22 +11,26 @@ client = anthropic.Anthropic(api_key=api_key)
 
 def generate_text(prompt: str, sentiment: str = None) -> str:
     """
-    Generate a sentiment-aligned paragraph for the given prompt using Claude Haiku.
+    Generate a sentiment-aligned paragraph for the given prompt using Claude Sonnet.
     If sentiment is None or 'auto', detect it using sentiment.py.
     """
     if sentiment is None or sentiment.lower() == "auto":
         sentiment = detect_sentiment(prompt)
 
-    # Build the system prompt to guide the model
-    system_prompt = f"""You are a thoughtful and nuanced writer. 
-Generate a single, well-written paragraph (3-4 sentences) that discusses the following topic.
-The tone should be {sentiment}.
-Keep the paragraph concise and engaging."""
+    # Build a more specific, high-quality system prompt
+    system_prompt = f"""You are an expert writer who creates compelling, nuanced content.
 
-    # Make the API call using Claude Haiku (fastest, cheapest model)
+Write a single well-crafted paragraph (4-6 sentences) about the given topic.
+- Tone: {sentiment}
+- Style: Engaging and substantive with vivid details
+- Avoid generic statements; be specific and insightful
+- Use varied sentence structure for better flow"""
+
+    # Use Sonnet 4.5 for much better quality
     message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=300,
+        model="claude-sonnet-4-5-20250929",  # Upgraded from Haiku
+        max_tokens=500,  # Increased for better completions
+        temperature=0.7,  # Adds creativity while staying coherent
         messages=[
             {
                 "role": "user",
@@ -36,5 +40,4 @@ Keep the paragraph concise and engaging."""
         system=system_prompt
     )
 
-    # Extract the text from the response
     return message.content[0].text
