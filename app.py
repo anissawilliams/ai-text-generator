@@ -11,8 +11,8 @@ user_prompt = st.text_area("Enter your prompt:", height=100)
 
 # Settings
 st.sidebar.header("Settings")
-word_count = st.number_input("Word Count", min_value=50, max_value=500, value=150)
-manual_override = st.selectbox("Override Sentiment", ["Auto-detect", "Positive", "Negative", "Neutral"])
+word_count = st.sidebar.number_input("Word Count", min_value=50, max_value=500, value=150)
+manual_override = st.sidebar.selectbox("Override Sentiment", ["Auto-detect", "Positive", "Negative", "Neutral"])
 # col1, col2 = st.columns(2)
 # with col1:
 #     word_count = st.number_input("Word Count", min_value=50, max_value=500, value=150)
