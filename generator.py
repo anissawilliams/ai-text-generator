@@ -10,8 +10,8 @@ if not HF_TOKEN:
     st.warning("⚠️ No Hugging Face API token found; will use rule-based fallback.")
 HAS_HF = bool(HF_TOKEN)
 
-# Free-tier-friendly model
-HF_MODEL = "bigscience/bloom-560m"
+# Free-tier-friendly small model
+HF_MODEL = "google/flan-t5-small"
 
 if HAS_HF:
     hf_client = InferenceClient(api_key=HF_TOKEN)
@@ -47,23 +47,21 @@ def classify_topic_type(prompt: str) -> str:
 # -----------------------------
 # Hugging Face generation
 # -----------------------------
-def generate_with_hf(prompt: str, sentiment: str, word_count: int = 150) -> str | None:
+def generate_with_hf(prompt: str, sentiment: str, word_count: int = 60) -> str | None:
+    """Generates text using Hugging Face InferenceClient."""
     if not HAS_HF:
         return None
 
     topic = extract_topic_keywords(prompt).capitalize()
-    hf_prompt = (f"Write a {sentiment} paragraph about {topic} "
-                 f"in a friendly, casual tone, around {word_count} words.")
+    hf_prompt = f"Write a {sentiment} paragraph about {topic} in a friendly, casual tone, around {word_count} words."
 
     try:
-        # Correct usage for latest InferenceClient
         resp = hf_client.text_generation(
-            hf_prompt,               # positional argument
+            hf_prompt,              # prompt as positional argument
             model=HF_MODEL,
             max_new_tokens=word_count,
             temperature=0.8
         )
-
         text = resp[0]["generated_text"] if isinstance(resp, list) else resp["generated_text"]
         return text.strip()
     except Exception as e:
@@ -73,7 +71,7 @@ def generate_with_hf(prompt: str, sentiment: str, word_count: int = 150) -> str 
 # -----------------------------
 # Rule-based fallback
 # -----------------------------
-def generate_rule_based(prompt: str, sentiment: str, word_count: int = 150) -> str:
+def generate_rule_based(prompt: str, sentiment: str, word_count: int = 60) -> str:
     topic = extract_topic_keywords(prompt).capitalize()
     topic_type = classify_topic_type(prompt)
     templates = {
@@ -103,7 +101,7 @@ def generate_rule_based(prompt: str, sentiment: str, word_count: int = 150) -> s
 # -----------------------------
 # Main generation function
 # -----------------------------
-def generate_text(prompt: str, sentiment: str, word_count: int = 150) -> str:
+def generate_text(prompt: str, sentiment: str, word_count: int = 60) -> str:
     st.info(f"Generating text for topic='{prompt}' with sentiment='{sentiment}'...")
     text = generate_with_hf(prompt, sentiment, word_count)
     if text:
