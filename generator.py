@@ -1,15 +1,24 @@
-import os
 import streamlit as st
+import os
 
-# Try to import anthropic
+# Try to import anthropic safely
 try:
     import anthropic
-    api_key = st.secrets["ANTHROPIC_API_KEY"]
-    client = anthropic.Anthropic(api_key=api_key)
-    HAS_ANTHROPIC = True
+
+    # Try to load API key from Streamlit secrets or environment
+    api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+
+    if api_key:
+        client = anthropic.Anthropic(api_key=api_key)
+        HAS_ANTHROPIC = True
+    else:
+        HAS_ANTHROPIC = False
+        st.warning("⚠️ No Anthropic API key found. Falling back to rule-based generation.")
+
 except ImportError:
     HAS_ANTHROPIC = False
-    print("Anthropic library not available")
+    st.warning("⚠️ Anthropic library not available. Run `pip install anthropic`.")
+
 
 # Canonical few-shot examples for casual tone
 FEW_SHOT_EXAMPLES = """## Examples
