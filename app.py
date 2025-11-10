@@ -26,7 +26,7 @@ user_prompt = st.text_area("Enter your prompt:", height=100)
 if st.button("Generate Text"):
     if user_prompt:
         # Detect sentiment
-            detected_sentiment = sentiment.detect_sentiment(user_prompt)
+        detected_sentiment = sentiment.detect_sentiment(user_prompt)
 
         st.info(f"Detected Sentiment: {detected_sentiment.upper()}")
 
