@@ -31,27 +31,34 @@ def is_casual_topic(prompt):
     casual_keywords = ["food", "movie", "music", "holiday", "game", "hobby", "favorite", "love", "like", "enjoy"]
     return any(word in prompt.lower() for word in casual_keywords)
 
+FEW_SHOT_EXAMPLES = """Examples:
+Positive: Ice cream is a delightful treat enjoyed by people of all ages, especially during warm weather.
+Negative: Fast food has been criticized for its health impacts and contribution to poor dietary habits.
+Neutral: Pasta is a staple food made from wheat and water, commonly served with sauces or vegetables.
+
+Positive: Playing video games can be a fun and relaxing way to unwind after a long day.
+Negative: Spending too much time on social media can lead to stress, distraction, and reduced productivity.
+Neutral: Board games are tabletop games that involve counters or pieces moved on a pre-marked surface.
+
+Positive: Dogs are loyal companions that bring joy, comfort, and energy to their owners.
+Negative: Owning a pet can be challenging due to time commitments, expenses, and behavioral issues.
+Neutral: Cats are domesticated animals known for their independence and quiet nature.
+"""
 
 def rewrite_prompt_for_claude(user_input, sentiment):
-    """Reframe casual input into a natural, sentiment-aligned topic"""
     topic = extract_topic_keywords(user_input).capitalize()
     casual = is_casual_topic(user_input)
 
-    if casual:
-        if sentiment == "positive":
-            return f"{topic} is loved by many for its fun, flavor, and comfort. Here's a joyful reflection:"
-        elif sentiment == "negative":
-            return f"Some people have concerns about {topic}, especially regarding health or overuse. Here's a critical take:"
-        else:
-            return f"{topic} is a popular topic with many perspectives. Here's a neutral overview:"
-    else:
-        if sentiment == "positive":
-            return f"{topic} is widely appreciated for its benefits and impact. Here's a positive summary:"
-        elif sentiment == "negative":
-            return f"{topic} has sparked criticism and concern. Here's a critical perspective:"
-        else:
-            return f"{topic} is a subject of interest. Here's an objective summary:"
+    intro = FEW_SHOT_EXAMPLES.strip()
 
+    if casual:
+        return f"""{intro}
+
+Now write a {sentiment} paragraph about {topic}:"""
+    else:
+        return f"""{intro}
+
+Now write a {sentiment} paragraph about {topic}, using a clear and natural tone:"""
 
 def generate_with_api(prompt, sentiment, word_count):
     """Generate using Claude API"""
