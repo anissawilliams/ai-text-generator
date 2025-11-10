@@ -6,7 +6,7 @@ import requests
 # Hugging Face API setup
 # ----------------------------------------
 HF_API_TOKEN = st.secrets.get("HF_API_TOKEN") or os.environ.get("HF_API_TOKEN")
-HF_MODEL = "google/flan-t5-small"  # Instruction-tuned model
+#HF_MODEL = "google/flan-t5-small"  # Instruction-tuned model
 
 HAS_HF = True if HF_API_TOKEN else False
 if not HAS_HF:
@@ -67,16 +67,29 @@ def generate_with_hf(prompt: str, sentiment: str, word_count: int = 150) -> str 
     hf_prompt = f"Write a {sentiment} paragraph about {topic} in a friendly, casual tone. Around {word_count} words."
 
     try:
-        url = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
-        response = requests.post(
-            url,
-            headers={"Authorization": f"Bearer {HF_API_TOKEN}"},
-            json={"inputs": hf_prompt},
-            timeout=30
-        )
+        # url = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
+        # response = requests.post(
+        #     url,
+        #     headers={"Authorization": f"Bearer {HF_API_TOKEN}"},
+        #     json={"inputs": hf_prompt},
+        #     timeout=30
+        # )
 
-        response.raise_for_status()
-        data = response.json()
+        model_name = "tiiuae/falcon-7b-instruct"
+        endpoint = "https://router.huggingface.co/v1/completions"
+
+        payload = {
+            "model": model_name,
+            "inputs": f"Write a positive paragraph about {topic} in a friendly tone."
+        }
+
+        headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+        resp = requests.post(endpoint, json=payload, headers=headers, timeout=30)
+        st.write("Status:", resp.status_code)
+        st.write("Body:", resp.text)
+
+        resp.raise_for_status()
+        data = resp.json()
         # Hugging Face outputs text under 'generated_text'
         text = data[0]["generated_text"].strip()
         return text
