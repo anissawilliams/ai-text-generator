@@ -8,8 +8,8 @@ try:
 except ImportError:
     HAS_ANTHROPIC = False
 
-# Few-shot examples to guide Claude's tone and structure
-FEW_SHOT_EXAMPLES = """Examples:
+# Canonical few-shot examples for casual tone
+FEW_SHOT_EXAMPLES = """## Examples
 Positive: Ice cream is a delightful treat enjoyed by people of all ages, especially during warm weather.
 Negative: Fast food has been criticized for its health impacts and contribution to poor dietary habits.
 Neutral: Pasta is a staple food made from wheat and water, commonly served with sauces or vegetables.
@@ -39,19 +39,27 @@ def extract_topic_keywords(prompt):
     keywords = [w.strip('.,!?;:') for w in words if w.strip('.,!?;:') not in stop_words]
     return ' '.join(keywords[:5]) if keywords else prompt
 
-def is_casual_topic(prompt):
-    """Detect if the topic is casual/personal"""
-    casual_keywords = ["food", "movie", "music", "holiday", "game", "hobby", "favorite", "love", "like", "enjoy", "watching", "playing"]
-    return any(word in prompt.lower() for word in casual_keywords)
+def classify_topic_type(prompt):
+    """Classify topic into a basic type"""
+    prompt = prompt.lower()
+    if any(word in prompt for word in ["pizza", "ice cream", "burger", "food", "meal", "snack", "dish"]):
+        return "food"
+    elif any(word in prompt for word in ["beach", "soccer", "game", "watching", "playing", "travel", "vacation", "hobby"]):
+        return "activity"
+    elif any(word in prompt for word in ["dog", "cat", "pet", "animal", "bird", "fish"]):
+        return "animal"
+    else:
+        return "generic"
 
 def rewrite_prompt_for_claude(user_input, sentiment):
-    """Reframe input with few-shot examples and tone guidance"""
+    """Reframe input with structured context and tone guidance"""
     topic = extract_topic_keywords(user_input).capitalize()
     tone = "friendly and natural tone for a casual audience"
 
     return f"""{FEW_SHOT_EXAMPLES}
 
-Now write a {sentiment} paragraph about {topic}, using a {tone}:"""
+## Instructions
+Write a **{sentiment}** paragraph about **{topic}**, using a {tone}. Keep it natural, engaging, and around 100–150 words."""
 
 def generate_with_api(prompt, sentiment, word_count):
     """Generate using Claude API"""
@@ -86,19 +94,8 @@ def generate_with_api(prompt, sentiment, word_count):
         print(f"API generation failed with error: {type(e).__name__}: {str(e)}")
         return None
 
-def classify_topic_type(prompt):
-    """Classify topic into a basic type"""
-    prompt = prompt.lower()
-    if any(word in prompt for word in ["pizza", "ice cream", "burger", "food", "meal", "snack", "dish"]):
-        return "food"
-    elif any(word in prompt for word in ["beach", "soccer", "game", "watching", "playing", "travel", "vacation", "hobby"]):
-        return "activity"
-    elif any(word in prompt for word in ["dog", "cat", "pet", "animal", "bird", "fish"]):
-        return "animal"
-    else:
-        return "generic"
-
 def generate_rule_based(prompt, sentiment, word_count):
+    """Rule-based fallback with contextual phrasing"""
     topic = extract_topic_keywords(prompt).capitalize()
     topic_type = classify_topic_type(prompt)
 
@@ -126,7 +123,6 @@ def generate_rule_based(prompt, sentiment, word_count):
     }
 
     return templates[topic_type][sentiment]
-
 
 def generate_text(prompt, sentiment, word_count=150):
     """Main generation function - tries API first, then rule-based fallback"""
