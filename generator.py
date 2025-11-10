@@ -10,8 +10,8 @@ if not HF_TOKEN:
     st.warning("⚠️ No Hugging Face API token found; will use rule-based fallback.")
 HAS_HF = bool(HF_TOKEN)
 
-# Pick a model that works with free inference
-HF_MODEL = "tiiuae/falcon-7b-instruct"
+# Free-tier-friendly model
+HF_MODEL = "bigscience/bloom-560m"
 
 if HAS_HF:
     hf_client = InferenceClient(api_key=HF_TOKEN)
@@ -56,13 +56,14 @@ def generate_with_hf(prompt: str, sentiment: str, word_count: int = 150) -> str 
                  f"in a friendly, casual tone, around {word_count} words.")
 
     try:
-        # Correct positional usage of text_generation
+        # Correct usage for latest InferenceClient
         resp = hf_client.text_generation(
-            hf_prompt,  # prompt as positional argument
+            hf_prompt,               # positional argument
             model=HF_MODEL,
-            parameters={"max_new_tokens": word_count, "temperature": 0.8}
+            max_new_tokens=word_count,
+            temperature=0.8
         )
-        # Extract generated text
+
         text = resp[0]["generated_text"] if isinstance(resp, list) else resp["generated_text"]
         return text.strip()
     except Exception as e:
