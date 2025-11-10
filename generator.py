@@ -1,20 +1,21 @@
-import os
+import random
 import streamlit as st
-from huggingface_hub import InferenceClient
+from transformers import pipeline
 
 # -----------------------------
-# Hugging Face API setup
+# Sentiment analysis setup
 # -----------------------------
-HF_TOKEN = st.secrets.get("HF_API_TOKEN") or os.environ.get("HF_API_TOKEN")
-if not HF_TOKEN:
-    st.warning("⚠️ No Hugging Face API token found; will use rule-based fallback.")
-HAS_HF = bool(HF_TOKEN)
+sentiment_classifier = pipeline("sentiment-analysis")
 
-# Free-tier-friendly small model
-HF_MODEL = "google/flan-t5-small"
-
-if HAS_HF:
-    hf_client = InferenceClient(api_key=HF_TOKEN)
+def detect_sentiment(prompt: str) -> str:
+    """Detect sentiment using Hugging Face pipeline."""
+    result = sentiment_classifier(prompt)[0]
+    label = result["label"].lower()
+    if label == "positive":
+        return "positive"
+    elif label == "negative":
+        return "negative"
+    return "neutral"
 
 # -----------------------------
 # Helper functions
@@ -45,66 +46,92 @@ def classify_topic_type(prompt: str) -> str:
         return "generic"
 
 # -----------------------------
-# Hugging Face generation
+# Enhanced rule-based paragraph generation
 # -----------------------------
-def generate_with_hf(prompt: str, sentiment: str, word_count: int = 60) -> str | None:
-    """Generates text using Hugging Face InferenceClient."""
-    if not HAS_HF:
-        return None
-
-    topic = extract_topic_keywords(prompt).capitalize()
-    hf_prompt = f"Write a {sentiment} paragraph about {topic} in a friendly, casual tone, around {word_count} words."
-
-    try:
-        resp = hf_client.text_generation(
-            hf_prompt,              # prompt as positional argument
-            model=HF_MODEL,
-            max_new_tokens=word_count,
-            temperature=0.8
-        )
-        text = resp[0]["generated_text"] if isinstance(resp, list) else resp["generated_text"]
-        return text.strip()
-    except Exception as e:
-        st.error(f"❌ HF generation failed: {type(e).__name__}: {e}")
-        return None
-
-# -----------------------------
-# Rule-based fallback
-# -----------------------------
-def generate_rule_based(prompt: str, sentiment: str, word_count: int = 60) -> str:
-    topic = extract_topic_keywords(prompt).capitalize()
-    topic_type = classify_topic_type(prompt)
-    templates = {
-        "food": {
-            "positive": f"{topic} is absolutely delicious and loved by people of all ages.",
-            "negative": f"While many enjoy {topic}, some find it unhealthy or overly indulgent.",
-            "neutral": f"{topic} is a type of food commonly enjoyed in various cultures."
-        },
-        "activity": {
-            "positive": f"{topic} is a fun and relaxing way to spend time.",
-            "negative": f"Some people find {topic} exhausting or unappealing.",
-            "neutral": f"{topic} is a common activity enjoyed by people for leisure."
-        },
-        "animal": {
-            "positive": f"{topic} is a beloved companion known for its loyalty and charm.",
-            "negative": f"{topic} ownership can be challenging due to time, cost, and behavioral issues.",
-            "neutral": f"{topic} is a domesticated animal found in many homes."
-        },
-        "generic": {
-            "positive": f"{topic} is widely appreciated for its positive impact and appeal.",
-            "negative": f"{topic} has drawbacks and challenges to consider.",
-            "neutral": f"{topic} is a subject of ongoing discussion."
-        }
+TEMPLATES = {
+    "food": {
+        "positive": [
+            "Pizza is absolutely delicious and loved by people of all ages.",
+            "The combination of flavors and textures makes every bite enjoyable.",
+            "It's the perfect comfort food for any occasion."
+        ],
+        "negative": [
+            "While pizza can be tasty, overindulging may affect your health.",
+            "Some people find it greasy or too heavy after a meal.",
+            "It's best enjoyed occasionally rather than every day."
+        ],
+        "neutral": [
+            "Pizza is a widely known dish made from dough, sauce, and cheese.",
+            "It comes in various styles and is popular in many countries.",
+            "People enjoy it in different ways depending on local preferences."
+        ]
+    },
+    "activity": {
+        "positive": [
+            "Playing soccer is an exciting way to stay active and social.",
+            "It brings energy and joy to participants of all ages.",
+            "Friendly matches create great memories with friends and family."
+        ],
+        "negative": [
+            "Soccer can be tiring and sometimes frustrating for beginners.",
+            "Injuries may occur if players are not careful.",
+            "Some people prefer less physically demanding activities."
+        ],
+        "neutral": [
+            "Soccer is a sport played by two teams of eleven players.",
+            "It is popular worldwide and has various professional leagues.",
+            "People play it for exercise, competition, or leisure."
+        ]
+    },
+    "animal": {
+        "positive": [
+            "Dogs are loyal companions known for their friendliness and energy.",
+            "They bring warmth and happiness to many households.",
+            "Spending time with a dog can brighten anyone's day."
+        ],
+        "negative": [
+            "Owning a dog can be challenging due to time, cost, and training needs.",
+            "Some dogs have behavioral issues that require patience.",
+            "It’s important to consider responsibilities before adopting a pet."
+        ],
+        "neutral": [
+            "Dogs are domesticated animals kept as pets in many homes.",
+            "They come in various breeds, sizes, and temperaments.",
+            "People care for them by providing food, shelter, and attention."
+        ]
+    },
+    "generic": {
+        "positive": [
+            "This topic is widely appreciated for its positive impact.",
+            "It often inspires enthusiasm and interest in many people.",
+            "Engaging with it can bring joy and satisfaction."
+        ],
+        "negative": [
+            "This topic has some drawbacks and challenges to consider.",
+            "Critics point out potential issues that need attention.",
+            "Caution and thoughtful engagement are advised."
+        ],
+        "neutral": [
+            "This is a subject of ongoing discussion with varied perspectives.",
+            "Different people have different opinions depending on context.",
+            "It is widely studied and analyzed across fields."
+        ]
     }
-    return templates[topic_type].get(sentiment, templates["generic"]["neutral"])
+}
+
+def generate_rule_based_paragraph(prompt: str, sentiment: str) -> str:
+    topic_type = classify_topic_type(prompt)
+    sentences = TEMPLATES[topic_type].get(sentiment, TEMPLATES["generic"]["neutral"])
+    random.shuffle(sentences)  # Randomize order for variety
+    return " ".join(sentences)
 
 # -----------------------------
-# Main generation function
+# Main generator function
 # -----------------------------
-def generate_text(prompt: str, sentiment: str, word_count: int = 60) -> str:
-    st.info(f"Generating text for topic='{prompt}' with sentiment='{sentiment}'...")
-    text = generate_with_hf(prompt, sentiment, word_count)
-    if text:
-        return text
-    st.warning("Falling back to rule-based generation.")
-    return generate_rule_based(prompt, sentiment, word_count)
+def generate_text(prompt: str, sentiment: str = None) -> str:
+    # Detect sentiment if not provided
+    if sentiment is None or sentiment.lower() == "auto":
+        sentiment = detect_sentiment(prompt)
+    # Generate paragraph
+    paragraph = generate_rule_based_paragraph(prompt, sentiment)
+    return paragraph
