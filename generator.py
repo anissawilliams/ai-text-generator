@@ -66,9 +66,6 @@ def generate_with_hf(prompt: str, sentiment: str, word_count: int = 150) -> str 
     topic = extract_topic_keywords(prompt).capitalize()
     hf_prompt = f"Write a {sentiment} paragraph about {topic} in a friendly, casual tone. Around {word_count} words."
 
-
-    )
-
     try:
         url = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
         response = requests.post(
