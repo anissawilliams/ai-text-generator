@@ -86,38 +86,47 @@ def generate_with_api(prompt, sentiment, word_count):
         print(f"API generation failed with error: {type(e).__name__}: {str(e)}")
         return None
 
-def generate_rule_based(prompt, sentiment, word_count):
-    """Rule-based fallback with casual tone support"""
-    topic = extract_topic_keywords(prompt)
-    casual = is_casual_topic(prompt)
-
-    if casual:
-        templates = {
-            'positive': [
-                f"{topic.capitalize()} is a fun and enjoyable part of everyday life. It brings people together and always adds a little joy."
-            ],
-            'negative': [
-                f"While many enjoy {topic}, some find it overwhelming or distracting. It's best enjoyed in moderation."
-            ],
-            'neutral': [
-                f"{topic.capitalize()} is a common activity that people engage in for entertainment or relaxation."
-            ]
-        }
+def classify_topic_type(prompt):
+    """Classify topic into a basic type"""
+    prompt = prompt.lower()
+    if any(word in prompt for word in ["pizza", "ice cream", "burger", "food", "meal", "snack", "dish"]):
+        return "food"
+    elif any(word in prompt for word in ["beach", "soccer", "game", "watching", "playing", "travel", "vacation", "hobby"]):
+        return "activity"
+    elif any(word in prompt for word in ["dog", "cat", "pet", "animal", "bird", "fish"]):
+        return "animal"
     else:
-        templates = {
-            'positive': [
-                f"{topic.capitalize()} is widely appreciated for its benefits and positive impact. It continues to inspire enthusiasm and innovation."
-            ],
-            'negative': [
-                f"{topic.capitalize()} has raised concerns due to its drawbacks and ongoing challenges. Critics argue that it requires closer scrutiny and reform."
-            ],
-            'neutral': [
-                f"{topic.capitalize()} is a subject of ongoing discussion. It presents a range of perspectives depending on context and interpretation."
-            ]
-        }
+        return "generic"
 
-    options = templates.get(sentiment, templates['neutral'])
-    return random.choice(options)
+def generate_rule_based(prompt, sentiment, word_count):
+    topic = extract_topic_keywords(prompt).capitalize()
+    topic_type = classify_topic_type(prompt)
+
+    templates = {
+        "food": {
+            "positive": f"{topic} is absolutely delicious and loved by people of all ages. It's a go-to comfort food that never disappoints.",
+            "negative": f"While many enjoy {topic}, some find it unhealthy or overly indulgent. It's best in moderation.",
+            "neutral": f"{topic} is a type of food commonly enjoyed in various cultures and settings."
+        },
+        "activity": {
+            "positive": f"{topic} is a fun and relaxing way to spend time. It brings joy, energy, and great memories.",
+            "negative": f"Some people find {topic} exhausting or unappealing, especially when it's overdone or poorly organized.",
+            "neutral": f"{topic} is a common activity enjoyed by people for entertainment, exercise, or leisure."
+        },
+        "animal": {
+            "positive": f"{topic} is a beloved companion known for its loyalty and charm. It brings warmth to many households.",
+            "negative": f"{topic} ownership can be challenging due to time, cost, and behavioral issues.",
+            "neutral": f"{topic} is a domesticated animal found in many homes around the world."
+        },
+        "generic": {
+            "positive": f"{topic} is widely appreciated for its positive impact and appeal. It continues to inspire enthusiasm.",
+            "negative": f"{topic} has raised concerns due to its drawbacks and challenges. Critics urge caution and reform.",
+            "neutral": f"{topic} is a subject of ongoing discussion with varied perspectives depending on context."
+        }
+    }
+
+    return templates[topic_type][sentiment]
+
 
 def generate_text(prompt, sentiment, word_count=150):
     """Main generation function - tries API first, then rule-based fallback"""
