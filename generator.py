@@ -1,12 +1,15 @@
 import os
-import random
+import streamlit as st
 
 # Try to import anthropic
 try:
     import anthropic
+    api_key = st.secrets["ANTHROPIC_API_KEY"]
+    client = anthropic.Anthropic(api_key=api_key)
     HAS_ANTHROPIC = True
 except ImportError:
     HAS_ANTHROPIC = False
+    print("Anthropic library not available")
 
 # Canonical few-shot examples for casual tone
 FEW_SHOT_EXAMPLES = """## Examples
@@ -62,8 +65,20 @@ Do not include headings, lists, or markdown formatting.
 Focus on vivid but simple language.
 """
 
+def rewrite_prompt_for_claude(user_input, sentiment):
+    """Concise, sentiment-aware prompt for natural paragraph generation."""
+    topic = extract_topic_keywords(user_input).capitalize()
+    sentiment = sentiment.lower()
+
+    return f"""
+Write a short paragraph (around 70–90 words) that expresses a {sentiment} feeling about "{topic}".
+Use a natural, conversational tone — like something a person would write on social media or in a journal.
+Avoid lists, markdown, or headers.
+Just return the paragraph text, nothing else.
+"""
+
 def generate_with_api(prompt, sentiment, word_count):
-    """Generate using Claude API (improved)."""
+    """Generate text using Claude with tuned temperature and modern model version."""
     if not HAS_ANTHROPIC:
         print("Anthropic library not available")
         return None
@@ -77,24 +92,21 @@ def generate_with_api(prompt, sentiment, word_count):
         client = anthropic.Anthropic(api_key=api_key)
         rewritten_prompt = rewrite_prompt_for_claude(prompt, sentiment)
 
+        # Updated model name and temperature
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",  # newer stable version
-            max_tokens=300,
-            temperature=0.8,  # Add variety and tone warmth
-            messages=[{"role": "user", "content": rewritten_prompt}]
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=250,
+            temperature=0.85,
+            messages=[
+                {"role": "user", "content": rewritten_prompt}
+            ],
         )
 
-        text = message.content[0].text.strip()
+        # Claude responses are often wrapped like [{'type': 'text', 'text': '...'}]
+        text = message.content[0].get("text", "").strip()
 
-        # Clean any markdown or extra formatting Claude adds
-        text = text.replace("**", "").replace("#", "").strip()
-
-        # Optional: truncate to roughly the desired length
-        words = text.split()
-        if len(words) > word_count:
-            text = " ".join(words[:word_count]) + "..."
-
-        return text
+        # Basic cleanup
+        return text.replace("**", "").replace("#", "").strip()
 
     except Exception as e:
         print(f"API generation failed: {e}")
