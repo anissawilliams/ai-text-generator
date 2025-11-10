@@ -7,6 +7,7 @@ try:
 
     # Try to load API key from Streamlit secrets or environment
     api_key = st.secrets.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+    st.write("Loaded key prefix:", st.secrets["ANTHROPIC_API_KEY"][:10])
 
     if api_key:
         client = anthropic.Anthropic(api_key=api_key)
