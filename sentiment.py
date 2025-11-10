@@ -7,7 +7,6 @@ warnings.filterwarnings('ignore')
 # Use a simpler, more reliable model
 sentiment_pipeline = None
 
-
 def get_pipeline():
     """Lazy load the pipeline to avoid initialization errors"""
     global sentiment_pipeline

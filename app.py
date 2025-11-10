@@ -10,11 +10,14 @@ st.write("Enter a prompt and the AI will detect its sentiment and generate align
 user_prompt = st.text_area("Enter your prompt:", height=100)
 
 # Settings
-col1, col2 = st.columns(2)
-with col1:
-    word_count = st.number_input("Word Count", min_value=50, max_value=500, value=150)
-with col2:
-    manual_override = st.selectbox("Override Sentiment", ["Auto-detect", "Positive", "Negative", "Neutral"])
+st.sidebar.header("Settings")
+word_count = st.number_input("Word Count", min_value=50, max_value=500, value=150)
+manual_override = st.selectbox("Override Sentiment", ["Auto-detect", "Positive", "Negative", "Neutral"])
+# col1, col2 = st.columns(2)
+# with col1:
+#     word_count = st.number_input("Word Count", min_value=50, max_value=500, value=150)
+# with col2:
+#     manual_override = st.selectbox("Override Sentiment", ["Auto-detect", "Positive", "Negative", "Neutral"])
 
 # Generate button
 if st.button("Generate Text"):
