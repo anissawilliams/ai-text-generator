@@ -3,24 +3,11 @@ import anthropic
 from sentiment import detect_sentiment
 
 # Initialize the Anthropic client using Streamlit secrets
-try:
-    api_key = st.secrets.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY not found in Streamlit secrets")
+api_key = st.secrets.get("ANTHROPIC_API_KEY")
+if not api_key:
+    raise ValueError("ANTHROPIC_API_KEY not found in Streamlit secrets")
 
-    client = anthropic.Anthropic(api_key=api_key)
-
-    # Test connection to Anthropic
-    test_response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=5,
-        messages=[{"role": "user", "content": "test"}]
-    )
-    print("✓ Successfully connected to Anthropic API")
-except Exception as e:
-    print(f"✗ Failed to connect to Anthropic: {e}")
-    raise
-
+client = anthropic.Anthropic(api_key=api_key)
 
 def generate_text(prompt: str, sentiment: str = None) -> str:
     """
