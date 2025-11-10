@@ -111,4 +111,20 @@ def generate_rule_based(prompt: str, sentiment: str, word_count: int = 150) -> s
         "generic": {
             "positive": f"{topic} is widely appreciated for its positive impact and appeal.",
             "negative": f"{topic} has drawbacks and challenges to consider.",
-            "neutral": f"{topic} is a
+            "neutral": f"{topic} is a subject of ongoing discussion."
+        }
+    }
+    return templates[topic_type][sentiment]
+
+
+# ----------------------------------------
+# Main generation function
+# ----------------------------------------
+def generate_text(prompt: str, sentiment: str, word_count: int = 150) -> str:
+    """Generate text using HF API first, then fallback."""
+    st.info(f"Generating text for topic='{prompt}' with sentiment='{sentiment}'...")
+    text = generate_with_hf(prompt, sentiment, word_count)
+    if text:
+        return text
+    st.warning("Falling back to rule-based generation.")
+    return generate_rule_based(prompt, sentiment, word_count)
