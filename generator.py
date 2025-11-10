@@ -2,12 +2,29 @@ import streamlit as st
 import anthropic
 from sentiment import detect_sentiment
 
+# api_key = st.secrets.get("ANTHROPIC_API_KEY")
+# st.write(f"Key found: {bool(api_key)}")
+# st.write(f"Key length: {len(api_key) if api_key else 0}")
+# st.write(f"Key starts with: {api_key[:10] if api_key else 'None'}...")
 # Initialize the Anthropic client using Streamlit secrets
 api_key = st.secrets.get("ANTHROPIC_API_KEY")
 if not api_key:
     raise ValueError("ANTHROPIC_API_KEY not found in Streamlit secrets")
 
 client = anthropic.Anthropic(api_key=api_key)
+try:
+    # Test with a simple call
+    test_message = client.messages.create(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=10,
+        messages=[{"role": "user", "content": "Hi"}]
+    )
+    st.success("API key works!")
+except anthropic.AuthenticationError as e:
+    st.error(f"Auth error: Check if key is valid and active")
+    st.error(f"Key starts with: {api_key[:15]}...")  # Show first 15 chars only
+except Exception as e:
+    st.error(f"Other error: {type(e).__name__}")
 
 def generate_text(prompt: str, sentiment: str = None) -> str:
     """

@@ -2,10 +2,7 @@ import streamlit as st
 from generator import generate_text
 import sentiment
 
-api_key = st.secrets.get("ANTHROPIC_API_KEY")
-st.write(f"Key found: {bool(api_key)}")
-st.write(f"Key length: {len(api_key) if api_key else 0}")
-st.write(f"Key starts with: {api_key[:10] if api_key else 'None'}...")
+
 st.set_page_config(page_title="Sentiment-Based Text Generator", page_icon="🤖")
 
 st.title("🤖 Sentiment-Based Text Generator")
