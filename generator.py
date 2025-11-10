@@ -87,38 +87,21 @@ Just return the paragraph text, nothing else.
 """
 
 def generate_with_api(prompt, sentiment, word_count):
-    """Generate text using Claude with tuned temperature and modern model version."""
     if not HAS_ANTHROPIC:
-        print("Anthropic library not available")
-        return None
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("No API key found in environment")
         return None
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
         rewritten_prompt = rewrite_prompt_for_claude(prompt, sentiment)
-
-        # Updated model name and temperature
         message = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=250,
             temperature=0.85,
-            messages=[
-                {"role": "user", "content": rewritten_prompt}
-            ],
+            messages=[{"role": "user", "content": rewritten_prompt}],
         )
-
-        # Claude responses are often wrapped like [{'type': 'text', 'text': '...'}]
         text = message.content[0].get("text", "").strip()
-
-        # Basic cleanup
         return text.replace("**", "").replace("#", "").strip()
-
     except Exception as e:
-        print(f"API generation failed: {e}")
+        st.error(f"❌ API generation failed: {e}")
         return None
 
 
