@@ -66,16 +66,18 @@ def generate_with_hf(prompt: str, sentiment: str, word_count: int = 150) -> str 
     topic = extract_topic_keywords(prompt).capitalize()
     hf_prompt = f"Write a {sentiment} paragraph about {topic} in a friendly, casual tone. Around {word_count} words."
 
-    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-    payload = {"inputs": hf_prompt}
+
+    )
 
     try:
+        url = f"https://router.huggingface.co/hf-inference/models/{HF_MODEL}"
         response = requests.post(
-            f"https://api-inference.huggingface.co/models/{HF_MODEL}",
-            headers=headers,
-            json=payload,
+            url,
+            headers={"Authorization": f"Bearer {HF_API_TOKEN}"},
+            json={"inputs": hf_prompt},
             timeout=30
         )
+
         response.raise_for_status()
         data = response.json()
         # Hugging Face outputs text under 'generated_text'
